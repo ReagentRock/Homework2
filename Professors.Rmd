@@ -23,13 +23,18 @@ When you click the **Knit** button a document will be generated that includes bo
 ```{r cars}
 ggprofs<-ggplot(profs)
 
-ggprofs+geom_histogram(aes(x=eval))
+ggprofs+geom_histogram(aes(x=eval))+labs(x="Evaluation",title ="Histogram of Evaluations")
+mean(profs$eval)
+median(profs$eval)
 
-ggprofs+geom_boxplot(aes(x=profs$eval,y=profs$native))
+ggprofs+geom_boxplot(aes(x=eval,y=native))+labs(x="Evaluation",title ="Evaluation for Native and non-Native Professors")
 
-ggprofs+geom_histogram(aes(x=profs$eval))+facet_wrap(~gender)
+ggprofs+geom_histogram(aes(x=eval))+labs(x="Evaluation",title ="Histogram of Evaluations by Gender")+facet_wrap(~gender)
+mean(profs$eval[profs$gender=="male"])
+mean(profs$eval[profs$gender=="female"])
 
-ggprofs+geom_point(aes(x=profs$beauty,y=profs$eval))
+ggprofs+geom_point(aes(x=beauty,y=eval))+labs(x="Beauty",y="Evaluation",title = "Evaluation by Beauty")
+cor(profs$beauty,profs$eval)
 ```
 
 ## Including Plots
@@ -38,14 +43,14 @@ You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
 ggbike<-ggplot(bike)
-ggbike+geom_line(aes(x=hr,y=total))
+ggbike+geom_line(aes(x=hr,y=total))+labs(x="Hour",y="Average Bike Rentals")
 
-ggbike+geom_line(aes(x=hr,y=total))+facet_wrap(~workingday)
+ggbike+geom_line(aes(x=hr,y=total))+labs(x="Hour",y="Average Bike Rentals",title="Average Bike Rentals by Hour by Working Day")+facet_wrap(~workingday)
 
 nine = bike%>%filter(hr==9)
 ggnine<-ggplot(nine)
 
-ggnine+geom_col(aes(x=weathersit,y=total))+facet_wrap(~workingday)
+ggnine+geom_col(aes(x=weathersit,y=total))+facet_wrap(~workingday)+labs(x="Weather Condition",y="Average Ridership",title="Average Ridership of 9AM by Weather Conditions and Working Day")
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
@@ -61,9 +66,9 @@ levels=c("Sep", "Oct","Nov")))
 
 ggmetro<-ggplot(capmetro_UT)
 
-ggmetro+geom_line(aes(x=hour_of_day,y=boarding,color=month))+facet_wrap(~day_of_week)
+ggmetro+geom_line(aes(x=hour_of_day,y=boarding,color=month))+facet_wrap(~day_of_week)+labs(x="Hour",y="Boarding(People/15min)",title="Boarding by Hour for Every Day of the Week")
 
-ggmetro+geom_point(aes(x=temperature,y=boarding,color=weekend))+facet_wrap(~hour_of_day)
+ggmetro+geom_point(aes(x=temperature,y=boarding,color=weekend))+facet_wrap(~hour_of_day)+labs(x="Temperature(F)",y="Boarding(People/15min)",title="Boarding by Temperature for Every Operational Hour")
 ```
 ```{r}
 
@@ -71,10 +76,14 @@ tab<-data.frame(table(board$song_id))
 tab<-tab%>%arrange(desc(Freq))%>%head(10)
 tab$performer<-c("Imagine Dragons", "AWOLNATION","TheWeeknd","JasonMraz","AnnRimes","OneRepublic", "LMFAO Featuring Lauren Bennett & GoonRock","Jewel","Adele","Carrie Underwood")
 tab$Var1<-c("Radioactive","Sail","Blinding Lights", "I'm Yours", "How Do I Live", "Counting Stars", "Party Rock Anthem", "Foolish Games/You Were Meant for Me","Rolling in the Deep","Before He Cheats")
+tab
+colnames(tab)<-c("Song","Count","Performer")
+tab
 
-board%>%filter(year!=2021|year!=1958)
 
 #find num of unique songs every year
+
+board<-board%>%filter(year!=2021|year!=1958)
 
 hold<-c()
 for(i in min(board$year):max(board$year)){
@@ -84,33 +93,46 @@ for(i in min(board$year):max(board$year)){
 board<-mutate(board,unique=hold[board$year-1957])
 
 ggboard<-ggplot(board)
-ggboard+geom_line(aes(x=year,y=hold))
+ggboard+geom_line(aes(x=year,y=unique))+labs(y="Unique Songs",x="Year",title="Unique Songs by Year")
 
 
 #find songs that had top 100 for at least 10 weeks per year.
 topsong<-data.frame(table(board$song))
 topsong<-topsong%>%arrange(desc(topsong[2]))
 
-
-
-
 people<-data.frame(table(board$performer))
 people<-people%>%filter(people[2]>=30)
 people<-people%>%arrange(desc(people[2]))
 people
 
-unique(board$song_id)
+
+board$performer<-str_replace_all(board$performer, "[^[:alnum:]]", "")
+board$song_id<-str_replace_all(board$song_id, "[^[:alnum:]]", "")
+
+#song that were in the top 100 for at least 10 weeks.
+popsong<-data.frame(table(board$song_id))
+popsong<-popsong%>%filter(popsong$Freq>=10)
+
+#count of the amount of unique songs that a performer has in the top 100 for at least 10 weeks
 
 fame<-c()
-board$performer<-str_remove_all(board$performer,"\\?\\+")
-
 for(i in 1:length(unique(board$performer))){
-  fame[i]<-sum(str_detect(unique(board$song_id),unique(board$performer)[i]))  
+  fame[i]<-sum(str_detect(popsong$Var1, str_c(unique(board$performer)[i],"\\b")))
 }
 
-topsinger<-data.frame(unique(board$performer))
 topsinger<-data.frame(fame)
-  ggplot(topsinger)+geom_bar(aes(x=topsinger[1],y=topsinger[2]))
+
+topsinger$performer<-unique(board$performer)
+
+topsinger<-topsinger%>%filter(topsinger$fame>=30)
+colnames(topsinger)<-c("fame","performer")
+
+topsinger<-topsinger%>%arrange(desc(topsinger$fame))
+topsinger<-topsinger[1:19,]
+
+ggsinger<-ggplot(topsinger)
+ggsinger+geom_col(aes(x=performer,y=fame))+labs(x="Performer",y="Count",title="Amount of Top 100 Billboard Song by Performers")+theme(axis.text.x = element_text(angle = 45, hjust = 1,size = 7))
+
   #add amount of top songs
 ```
 
